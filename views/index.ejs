@@ -1,0 +1,99 @@
+<form id="uploadForm" enctype="multipart/form-data">
+    <div>
+        <h2>커버 이미지</h2>
+        <input type="file" id="cover" name="cover" accept=".jpg, .png" />
+    </div>
+    <div>
+        <h2>txt 파일(여러 개)</h2>
+        <input
+            type="file"
+            id="epubFile"
+            name="epubFile"
+            accept=".txt"
+            multiple
+        />
+    </div>
+
+    <div>
+        <h2>제목</h2>
+        <input type="text" id="title" name="title" />
+    </div>
+    <div>
+        <h2>author</h2>
+        <input type="text" id="author" name="author" />
+    </div>
+    <div>
+        <h2>publisher</h2>
+        <input type="text" id="publisher" name="publisher" />
+    </div>
+
+    <div style="margin-top: 20px">
+        <button type="button" id="uploadButton">업로드</button>
+    </div>
+</form>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $('#uploadButton').click(function (e) {
+            e.preventDefault();
+
+            var formData = new FormData();
+            formData.append('cover', $('#cover')[0].files[0]);
+
+            // 이미지 업로드
+            $.ajax({
+                url: '/upload/cover',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (data) {
+                    console.log('이미지 업로드 성공:', data);
+
+                    // 이미지 업로드에 성공하면 txt 파일들을 업로드
+                    var txtFormData = new FormData();
+                    $.each($('#epubFile')[0].files, function (i, file) {
+                        txtFormData.append('epubFile', file);
+                    });
+                    txtFormData.append('title', $('#title').val());
+                    txtFormData.append('publisher', $('#publisher').val());
+                    txtFormData.append('author', $('#author').val());
+
+                    $.ajax({
+                        url: '/upload',
+                        type: 'POST',
+                        data: txtFormData,
+                        contentType: false,
+                        processData: false,
+                        xhrFields: {
+                            responseType: 'blob', // 서버로부터 받은 데이터를 Blob으로 처리
+                        },
+                        success: function (data) {
+                            const blob = new Blob([data], {
+                                type: 'application/zip',
+                            });
+
+                            // Blob 객체를 이용해 다운로드 링크 생성
+                            const downloadUrl =
+                                window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = downloadUrl;
+                            a.download =
+                                document.getElementById('title').value + '.zip'; // 다운로드될 파일명 지정
+                            document.body.appendChild(a);
+                            a.click();
+
+                            // 다운로드 후 링크 제거
+                            window.URL.revokeObjectURL(downloadUrl);
+                            document.body.removeChild(a);
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('업로드 실패:', error);
+                        },
+                    });
+                },
+            });
+        });
+    });
+</script>
